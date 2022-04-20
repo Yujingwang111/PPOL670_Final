@@ -1,0 +1,88 @@
+---
+title: "Trend of crime against property during COVID"
+author: "PeachCorp"
+date: "4/16/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(plyr)
+library(readr)
+library(jsonlite)
+library(httr)
+library(lubridate)
+library(janitor)
+library(sf)
+library(tidycensus)
+library(dotenv)
+library(patchwork)
+
+crime_all<- list.files(path = "data/", 
+                      pattern = "*.csv", 
+                      full.names = TRUE)%>%
+                      lapply(read_csv) %>% 
+                      bind_rows
+crime_all
+```
+
+
+```{r}
+crime_all<-crime_all%>%
+  clean_names()%>%
+  mutate(weekday=wday((report_dat), label=TRUE),
+         month=lubridate::month((report_dat),label=TRUE),
+         year=lubridate::year(report_dat),
+         crimetype=ifelse(offense%in%c("ROBBERY","THEFT","BURGLARY","ARSON"), "property", "non-property")
+         )
+```
+
+```{r}
+p1<-crime_all%>%
+  filter(year == 2019)%>%
+  group_by(offense)%>%
+  dplyr::summarise(count = n())%>%
+  ggplot(aes(x=offense, y=count))+
+  geom_bar(stat="identity", width = 0.5)+
+  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
+  theme_minimal()
+p1
+
+p2<-crime_all%>%
+  group_by(offense, month)%>%
+  dplyr::summarise(count = n())%>%
+  ggplot(aes(x=month, y=count, color=offense))+
+  geom_line(aes(group=offense))+
+  geom_point()
+p2
+
+```
+
+```{r}
+dc_census<-st_read("data/Census_Tracts_in_2020.shp")
+
+crime_sf <- st_as_sf(crime_all, coords = c("longitude", "latitude"))
+st_crs(crime_sf) <- 4326
+
+ggplot(data = crime_sf) +
+    geom_sf(data =dc_census,color="black") +theme_void()+
+    geom_sf(data =crime_sf, aes(color=crimetype),alpha=0.2)+theme_void()
+```
+
+```{r}
+#save the api key in a credential file
+
+census_api_key("0f11197d613ca3de58c5217387d60ef938bd9a7b", install=TRUE, overwrite=TRUE)
+v2019 <- load_variables(2019, "acs5", cache = TRUE)
+credential<- Sys.getenv("census_api_key")
+dc_population <- get_acs(geography = "tract",
+                         variables = "B01003_001",
+                         state = 11,
+                         county = 001,
+                         geometry = TRUE,
+                         year = 2019,
+                         progress = FALSE)
+```
+
