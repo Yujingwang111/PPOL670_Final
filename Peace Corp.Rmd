@@ -95,6 +95,23 @@ crimes_clean%>%
   geom_line(aes(group=offense))+
   geom_point()
 ```
+```{r}
+crimes_clean%>%
+  group_by(hours, weekday)%>%
+  dplyr::summarize(count=n())%>%
+  ggplot(aes(x=hours, y=weekday, fill=count))+
+  geom_tile()
+
+
+
+```
+
+
+
+
+
+
+
 
 ```{r}
 dc_census<-st_read("data/Census_Tracts_in_2020.shp")
