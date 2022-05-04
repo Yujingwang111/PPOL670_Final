@@ -26,7 +26,9 @@ crimes <-
   list.files(path = "data/",
              pattern = "*.csv", 
              full.names = T) %>% 
-  map_df(~read_csv(., col_types = cols("CCN"= col_double()))) 
+  map_df(~read_csv(., col_types = cols("CCN"= col_double(),
+                                       "LONGITUDE" = col_character(),
+                                       "LATITUDE" = col_character()))) 
 ```
 
 
@@ -48,12 +50,12 @@ crimes<-as.tibble(crimes)%>%
                 year=lubridate::year(report_dat),
                 occur_date=date(start_date),
                 occur_time=hms::as_hms(ymd_hms(start_date)),
-               # time_group=lubridate::hour(occur_time) %/% 6),
-               #   cut(as.numeric(occur_time),
-               #  breaks=c(0,6*60,12*60,18*60,23*60+59),
-              #  labels=c("00-06","06-12","12-18","18-00"),include.lowest = TRUE),
+                hours=lubridate::hour(occur_time),
                 crimetype=ifelse(offense%in%c("robbery","theft","burglary"), "property", "non-property")
   )
+#
+crimes_sf<-st_as_sf(crimes, coords = c("longitude", "latitude"),crs=4326)
+
 #identify duplication incidents by CCN
 crimes%>%
   group_by(ccn)%>%
@@ -97,7 +99,7 @@ crimes_clean%>%
 ```{r}
 dc_census<-st_read("data/Census_Tracts_in_2020.shp")
 
-crime_sf <- st_as_sf(crime_all, coords = c("longitude", "latitude"))
+crime_sf <-st_as_sf(crime_all, coords = c("longitude", "latitude"))
 st_crs(crime_sf) <- 4326
 
 ggplot(data = crime_sf) +
@@ -118,7 +120,37 @@ dc_population <- get_acs(geography = "tract",
                          year = 2019,
                          progress = FALSE)
 ```
+### API Census Track
+```{r}
+readRenviron("~/.Renviron")
+credential<- Sys.getenv("census_api_key")
+v2020 <- load_variables(2020, "acs5", cache = TRUE)
+
+
+```
+
 
 ```{r}
+#load the census tracts of chicago
+unzip(zipfile="data/tl_2017_11_tract.zip",
+      exdir = "data")
+#read shapefile into sf
+dc<-st_read("data/tl_2017_11_tract.shp")%>%
+  select(GEOID, geometry)%>%
+  clean_names()%>%
+  st_transform(crs=4326)
 
+crimes_sf<-st_as_sf(crimes_clean, coords = c("longitude", "latitude"),crs=4326)
+  
+#count the homicide and the arrest rate and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(year==2020, offense=="Theft F/Auto")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the count and arrest rate
+count<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)
+
+count
 ```
