@@ -1,6 +1,6 @@
 ---
 title: "Trend of crime against property during COVID"
-author: "PeachCorp"
+author: "Peace Corp"
 date: "4/16/2022"
 output: html_document
 ---
@@ -8,56 +8,90 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
-library(dplyr)
 library(plyr)
+library(dplyr)
 library(readr)
-library(jsonlite)
+library(purrr)
 library(httr)
+library(viridis)
 library(lubridate)
+library(hms)
 library(janitor)
 library(sf)
 library(tidycensus)
 library(dotenv)
 library(patchwork)
-
-crime_all<- list.files(path = "data/", 
-                      pattern = "*.csv", 
-                      full.names = TRUE)%>%
-                      lapply(read_csv) %>% 
-                      bind_rows
-crime_all
+#read and load DC crimes data
+crimes <-
+  list.files(path = "data/",
+             pattern = "*.csv", 
+             full.names = T) %>% 
+  map_df(~read_csv(., col_types = cols("CCN"= col_double()))) 
 ```
 
 
 ```{r}
-crime_all<-crime_all%>%
+#change case of the variables
+change_case<-function(x){
+  return(gsub("\\b([A-Z])([A-Z]+)", "\\U\\1\\L\\2", x, perl=TRUE))
+}
+#change case and split date variable to weekdays, month and year, label property offense 
+crimes<-as.tibble(crimes)%>%
   clean_names()%>%
-  mutate(weekday=wday((report_dat), label=TRUE),
-         month=lubridate::month((report_dat),label=TRUE),
-         year=lubridate::year(report_dat),
-         crimetype=ifelse(offense%in%c("ROBBERY","THEFT","BURGLARY","ARSON"), "property", "non-property")
-         )
+  dplyr::mutate(shift=change_case(shift),
+                method=change_case(method),
+                offense=change_case(offense),
+                block=change_case(block),
+                bid=change_case(bid),
+                weekday=lubridate::wday((start_date), label=TRUE),
+                month=lubridate::month((start_date),label=TRUE),
+                year=lubridate::year(report_dat),
+                occur_date=date(start_date),
+                occur_time=hms::as_hms(ymd_hms(start_date)),
+               # time_group=lubridate::hour(occur_time) %/% 6),
+               #   cut(as.numeric(occur_time),
+               #  breaks=c(0,6*60,12*60,18*60,23*60+59),
+              #  labels=c("00-06","06-12","12-18","18-00"),include.lowest = TRUE),
+                crimetype=ifelse(offense%in%c("robbery","theft","burglary"), "property", "non-property")
+  )
+#identify duplication incidents by CCN
+crimes%>%
+  group_by(ccn)%>%
+  dplyr::mutate(count=n())%>%
+  filter(count>1)
+#remove duplicate rows 
+crimes_clean<-filter(distinct(crimes, ccn, .keep_all = TRUE))
+#check 
+crimes_clean%>%
+  group_by(ccn)%>%
+  dplyr::mutate(count=n())%>%
+  filter(count>1)
+
+crimes_clean%>%
+  group_by(offense)%>%
+  dplyr::summarize(count=n())%>%
+  arrange(desc(count))
+
+crimes_clean %>% 
+  group_by(offense) %>%
+  dplyr::summarise(count=n())%>%
+  ggplot(aes(x = reorder(offense,count), y=count, fill=offense))+
+  geom_bar(stat="identity", width = 0.5, show.legend = FALSE)+
+  geom_text(aes(label=count), vjust=2.5, size=3, colour = "black")+
+  scale_fill_viridis(option = "D", discrete = T, direction = 1, begin = 0.9, end = 0.3) +
+  theme_bw()+
+  labs(x ="Offense", y = "Number of crimes", title = "Crimes in Washington D.C.") + 
+  scale_y_continuous() +
+  coord_flip()
 ```
 
 ```{r}
-p1<-crime_all%>%
-  filter(year == 2019)%>%
-  group_by(offense)%>%
-  dplyr::summarise(count = n())%>%
-  ggplot(aes(x=offense, y=count))+
-  geom_bar(stat="identity", width = 0.5)+
-  geom_text(aes(label=count), vjust=-0.3, size=3.5)+
-  theme_minimal()
-p1
-
-p2<-crime_all%>%
+crimes_clean%>%
   group_by(offense, month)%>%
   dplyr::summarise(count = n())%>%
   ggplot(aes(x=month, y=count, color=offense))+
   geom_line(aes(group=offense))+
   geom_point()
-p2
-
 ```
 
 ```{r}
@@ -67,13 +101,12 @@ crime_sf <- st_as_sf(crime_all, coords = c("longitude", "latitude"))
 st_crs(crime_sf) <- 4326
 
 ggplot(data = crime_sf) +
-    geom_sf(data =dc_census,color="black") +theme_void()+
-    geom_sf(data =crime_sf, aes(color=crimetype),alpha=0.2)+theme_void()
+  geom_sf(data =dc_census,color="black") +theme_void()+
+  geom_sf(data =crime_sf, aes(color=crimetype),alpha=0.2)+theme_void()
 ```
 
 ```{r}
 #save the api key in a credential file
-
 census_api_key("0f11197d613ca3de58c5217387d60ef938bd9a7b", install=TRUE, overwrite=TRUE)
 v2019 <- load_variables(2019, "acs5", cache = TRUE)
 credential<- Sys.getenv("census_api_key")
@@ -86,3 +119,6 @@ dc_population <- get_acs(geography = "tract",
                          progress = FALSE)
 ```
 
+```{r}
+
+```
