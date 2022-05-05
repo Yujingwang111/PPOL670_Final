@@ -190,5 +190,5 @@ ggplot(aes(x = hour, y = weekday, fill = norm)) +
 ```
 By subdividing the categories of property crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
 
-### Geospatial Visulization of Property Crime from 2017-2021
+### Geospatial Visulization of Crime from 2017-2021
 
