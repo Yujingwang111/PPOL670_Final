@@ -19,7 +19,9 @@ For this project, we use crime data for the city of Washington DC, which are ava
 Because we focus on property crime, after reading the data, we cleaned up the data. We split the time, month and year of the crime according to the original data. It not only lays the foundation for the following visualization, but also facilitates our prediction models.
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+```{r}
 library(tidyverse)
 library(plyr)
 library(dplyr)
@@ -83,10 +85,9 @@ crimes_clean%>%
   dplyr::summarize(count=n())%>%
   arrange(desc(count))
 ```
+
 ### Visulizing Crime and Property Crime in 2017-2021
 Visualizing data is a powerful way to gain high-level insight about underlying patterns in the data. Visualization provides useful clues about where we need to investigate further.
-
-Firstly, we make a visual analysis of the number of crimes from 2017-2022 committed by DC. According to the figure, we can find that over the past five years, there has been an overall downward trend in the number of crimes committed. In addition, compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
 
 #Crime over time from 2017-2021
 
@@ -102,7 +103,7 @@ ggplot(aes(x = year, y = count)) +
   geom_smooth(color = "#1A1A1A") 
 
 ```
-Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. 
+Firstly, we make a visual analysis of the number of crimes from 2017-2022 committed by DC. According to the figure, we can find that over the past five years, there has been an overall downward trend in the number of crimes committed. In addition, compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
 
 #Property crimes occur more frequently compared to other crimes.
 
@@ -123,8 +124,8 @@ crimes_clean %>%
   scale_y_continuous() +
   coord_flip()
 ```
+Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. 
 
-Next, we would like to continue our analysis in the time dimension. With this line graph of the number of crimes and the time line, we can see that the high incidence of both property crimes and other crimes occurs around October every year.
 #Property crimes have mostly occurred in October of each year for the last five years.
 
 ```{r}
@@ -137,6 +138,8 @@ crimes_clean%>%
   geom_point()+
   labs(x = "Month of Crime", y = "Number of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") 
 ```
+Next, we would like to continue our analysis in the time dimension. With this line graph of the number of crimes and the time line, we can see that the high incidence of both property crimes and other crimes occurs around October every year.
+
 #Property Crime Over Time
 
 ```{r}
@@ -149,9 +152,8 @@ crimes_clean %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.6), legend.title = element_blank(), legend.position="top", legend.direction="horizontal", legend.key.width=unit(2, "cm"), legend.key.height=unit(0.25, "cm"), legend.margin=unit(-0.5,"cm"), panel.margin=element_blank())+
    labs(x = "Hour of Property Crime", y = "Day of Week of Property Crime", title = "Number of Property Crime in DC from 2017 – 2021, by Time of Property Crime") +
   scale_fill_gradient(low = "white", high = "dark blue")
-
 ```
-In this heat map, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of property crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
+In order to further analyze the time, we use the heat map to subdivide the crime time into 24 hours. By doing this, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of property crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
 
 #Certain Types of Crime May Be More Time Dependent
 
@@ -187,3 +189,6 @@ ggplot(aes(x = hour, y = weekday, fill = norm)) +
   facet_wrap(~ offense, nrow =2.5 )
 ```
 By subdividing the categories of property crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
+
+### Geospatial Visulization of Property Crime from 2017-2021
+
