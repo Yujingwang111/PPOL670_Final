@@ -124,7 +124,7 @@ crimes_clean %>%
   coord_flip()
 ```
 
-
+Next, we would like to continue our analysis in the time dimension. With this line graph of the number of crimes and the time line, we can see that the high incidence of both property crimes and other crimes occurs around October every year.
 #Property crimes have mostly occurred in October of each year for the last five years.
 
 ```{r}
