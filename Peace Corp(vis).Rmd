@@ -84,7 +84,9 @@ crimes_clean%>%
   arrange(desc(count))
 ```
 ### Visulizing Crime and Property Crime in 2017-2021
-Firstly, we make a visual analysis of the number of crimes committed by DC. According to the figure, we can find that compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
+Visualizing data is a powerful way to gain high-level insight about underlying patterns in the data. Visualization provides useful clues about where we need to investigate further.
+
+Firstly, we make a visual analysis of the number of crimes from 2017-2022 committed by DC. According to the figure, we can find that over the past five years, there has been an overall downward trend in the number of crimes committed. In addition, compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
 
 #Crime over time from 2017-2021
 
@@ -100,6 +102,7 @@ ggplot(aes(x = year, y = count)) +
   geom_smooth(color = "#1A1A1A") 
 
 ```
+Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. 
 
 #Property crimes occur more frequently compared to other crimes.
 
