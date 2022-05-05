@@ -134,7 +134,7 @@ crimes_clean%>%
   geom_point()+
   labs(x = "Month of Crime", y = "Number of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") 
 ```
-#The highest frequency of property crimes occurred on Tuesdays at 22:00 and on Fridays from 19:00 to 23:00.
+#Property Crime Over Time
 
 ```{r}
 crimes_clean %>%
@@ -148,8 +148,9 @@ crimes_clean %>%
   scale_fill_gradient(low = "white", high = "dark blue")
 
 ```
+In this heat map, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of property crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
 
-#Certain types of crime may be more time dependent.
+#Certain Types of Crime May Be More Time Dependent
 
 ```{r}
 crimes_clean%>%
@@ -182,3 +183,4 @@ ggplot(aes(x = hour, y = weekday, fill = norm)) +
   scale_fill_gradient(low = "white", high = "#2980B9") +
   facet_wrap(~ offense, nrow =2.5 )
 ```
+By subdividing the categories of property crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
