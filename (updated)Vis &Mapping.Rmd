@@ -1,0 +1,335 @@
+---
+title: "Mapping"
+author: "Peace Corp"
+date: "5/4/2022"
+output: html_document
+---
+**Problem definition**
+The lockdown and quarantine measures issued worldwide in response to the COVID-19 global pandemic have brought a series of impacts on daily life. Unfortunately, most of the effects of COVID-19 and the resulting lockdown have been shockingly negative - rising deaths, unemployment and the imminent global financial crisis are the most frequently reported problems around the world. 
+
+While COVID-19 has brought about many negative effects, it has also brought about some positive changes. For example, crime rates have decreased. From 1.10% (3.1 million) in 2019 to 0.93% (2.6 million) in 2020, the percentage of people aged 12 and older who are victims of violent crime has decreased by 15%. In addition, property crime declines from 7.37% (9.8 million) of households in 2016 to 6.19% (7.9 million) of households in 2020 (Morgan & Thompson, 2022).
+Therefore, as international students, we are interested in examining the changes in crime rates before and after the COVID-19 in the District of Columbia where we study and live. 
+
+However, studies have shown that the decline in crime rate does not mean that all crimes have decreased. Because there are obvious differences between the different types of crime in the relationship between epidemiology and crime, it is important to study the types of crimes classified in the study of the relationship between COVID-19 and crime rate. It is almost always undesirable to study crime as an undifferentiated whole (Cornish & Smith,2012).
+Moreover, several armed robberies occurred in the Georgetown neighborhood from February to April 2022. Therefore, we wanted to primarily examine property crime rates in the District of Columbia. Here, we divide the years 2017-2022 into three periods: before the epidemic (2017-2019), during the  epidemic (2020-2021), and after the  epidemic (2022-). We will use the crime data in Open Data DC to examine the changes in property crime rates in DC before and during the epidemic. Meanwhile, based on the existing data, we will build models to predict property  crime rates in DC after the epidemic.
+
+**Data extraction**
+For this project, we use crime data for the city of Washington DC, which are available from 2017 onwards on the city’s open data portal. Crime data for city of Washington DC available from their open data portal at: https://opendata.dc.gov. To make analysis manageable, we utilized the data from 2017-2021. We downloaded the DC crime data for 5 years,  put them into a folder called “data”.
+
+Because we focus on property crime, after reading the data, we cleaned up the data. We split the time, month and year of the crime according to the original data. It not only lays the foundation for the following visualization, but also facilitates our prediction models.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+```{r}
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(readr)
+library(purrr)
+library(httr)
+library(viridis)
+library(lubridate)
+library(hms)
+library(janitor)
+library(sf)
+library(tidycensus)
+library(patchwork)
+library(ggplot2)
+#read and load DC crimes data
+crimes <-
+  list.files(path = "data/",
+             pattern = "*.csv", 
+             full.names = T) %>% 
+  map_df(~read_csv(., col_types = cols("CCN"= col_double()))) 
+```
+
+
+```{r}
+#change case of the variables
+change_case<-function(x){
+  return(gsub("\\b([A-Z])([A-Z]+)", "\\U\\1\\L\\2", x, perl=TRUE))
+}
+#change case and split date variable to weekdays, month and year, label property offense 
+crimes<-as.tibble(crimes)%>%
+  clean_names()%>%
+  dplyr::mutate(shift=change_case(shift),
+                method=change_case(method),
+                offense=change_case(offense),
+                block=change_case(block),
+                bid=change_case(bid),
+                weekday=lubridate::wday((start_date), label=TRUE),
+                month=lubridate::month((start_date),label=TRUE),
+                year=lubridate::year(start_date),
+                occur_date=date(start_date),
+                occur_time=hms::as_hms(ymd_hms(start_date)),
+                hour=lubridate::hour(occur_time),
+                crimetype=ifelse(offense%in%c("robbery","theft","burglary"), "property", "non-property"))
+crimes_clean<-filter(distinct(crimes, ccn, .keep_all = TRUE))
+
+#identify duplication incidents by CCN
+crimes%>%
+  group_by(ccn)%>%
+  dplyr::mutate(count=n())%>%
+  filter(count>1)
+#remove duplicate rows 
+crimes_clean<-filter(distinct(crimes, ccn, .keep_all = TRUE))
+#check 
+crimes_clean%>%
+  group_by(ccn)%>%
+  dplyr::mutate(count=n())%>%
+  filter(count>1)
+crimes_clean%>%
+  group_by(offense)%>%
+  dplyr::summarize(count=n())%>%
+  arrange(desc(count))
+```
+
+### Visulizing Crime and Property Crime in 2017-2021
+Visualizing data is a powerful way to gain high-level insight about underlying patterns in the data. Visualization provides useful clues about where we need to investigate further.
+
+#Crime over time from 2017-2021
+
+```{r}
+crimes_clean%>%
+  group_by(offense, year)%>%
+  dplyr::summarise(count = n())%>%
+ggplot(aes(x = year, y = count)) +
+  geom_line(color = "#F2CA27", size = 0.1) +
+  geom_smooth(color = "#1A1A1A") 
+```
+Firstly, we make a visual analysis of the number of crimes from 2017-2022 committed by DC. According to the figure, we can find that over the past five years, there has been an overall downward trend in the number of crimes committed. In addition, compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
+
+#Property crimes occur more frequently compared to other crimes
+
+```{r}
+crimes_clean%>%
+  group_by(offense)%>%
+  dplyr::summarize(count=n())%>%
+  arrange(desc(count))
+crimes_clean %>% 
+  group_by(offense) %>%
+  dplyr::summarise(count=n())%>%
+  ggplot(aes(x = reorder(offense,count), y=count, fill=offense))+
+  geom_bar(stat="identity", width = 0.5, show.legend = FALSE)+
+  geom_text(aes(label=count), vjust=2.5, size=3, colour = "black")+
+  scale_fill_viridis(option = "D", discrete = T, direction = 1, begin = 0.9, end = 0.3) +
+  theme_bw()+
+  labs(x ="Offense", y = "Number of crimes", title = "Crimes in Washington D.C.") + 
+  scale_y_continuous() +
+  coord_flip()
+```
+Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. 
+
+#Property crimes have mostly occurred in October of each year for the last five years
+
+```{r}
+crimes_clean%>%
+  group_by(offense, month)%>%
+  drop_na(hour,weekday) %>%
+  dplyr::summarise(count = n())%>%
+  ggplot(aes(x=month, y=count, color=offense))+
+  geom_line(aes(group=offense))+
+  geom_point()+
+  labs(x = "Month of Crime", y = "Number of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") 
+```
+Next, we would like to continue our analysis in the time dimension. With this line graph of the number of crimes and the time line, we can see that the high incidence of both property crimes and other crimes occurs around October every year.
+
+#Crime Over Time
+
+```{r}
+crimes_clean %>%
+  group_by(hour,weekday) %>%
+  drop_na(hour,weekday) %>%
+  dplyr::summarise(count = n()) %>%
+  ggplot(aes(x =as.factor(hour), y = weekday, fill = count, stat = "identity"))+
+  geom_tile()+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6), legend.title = element_blank(), legend.position="top", legend.direction="horizontal", legend.key.width=unit(2, "cm"), legend.key.height=unit(0.25, "cm"), legend.margin=unit(-0.5,"cm"), panel.margin=element_blank())+
+   labs(x = "Hour of Crime", y = "Day of Week of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") +
+  scale_fill_viridis(option = "D")
+```
+In order to further analyze the time, we use the heat map to subdivide the crime time into 24 hours. By doing this, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
+
+#Certain Types of Crime May Be More Time Dependent
+
+```{r}
+crimes_clean <- crimes_clean %>%
+  filter(offense != 'Assault W/Dangerous Weapon') %>%
+  filter(offense != 'Sex Abuse') %>%
+  filter(offense != 'Arson') %>%
+  filter(offense != 'Homicide') %>%
+  drop_na(hour,weekday)
+
+time <- crimes_clean %>% 
+  select(weekday, hour, offense) %>%
+  group_by(weekday, hour, offense)%>%
+  dplyr::summarise(count = n())
+
+ggplot(time, aes(x =as.factor(hour), y = weekday, fill = count))+
+  geom_tile()+
+ theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = 4)) +
+  labs(x = "Hour of Property Crime", y = "Day of Week of Property Crime", title = "Number of Property Crime in Washington DC from 2017 – 2021, by Category and Time of Property Crime") +
+  scale_fill_viridis(option = "D") +
+  facet_wrap(~ offense, nrow = 2.5)
+```
+This graph is good but the gradients aren’t helpful because they are not normalized. We need to normalize the range on each facet. 
+
+
+#Certain types of crime may be more time dependent(normalized).
+```{r}
+crimes_clean%>%
+    filter(offense %in% crimes_clean$offense[1:157104]) %>%
+group_by(offense,weekday,hour) %>%
+    drop_na(hour,weekday) %>%
+  dplyr::summarise(count = n()) %>%
+  mutate(norm = count/sum(count))%>%
+  
+ggplot(aes(x = hour, y = weekday, fill = norm)) +
+  geom_tile() +
+  # fte_theme() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = 4)) +
+  labs(x = "Hour of Crime", y = "Day of Week of Crime", title = "Number of Crime in Washington DC from 2017 – 2021, by Category and Time") +
+  scale_fill_viridis(option = "D") +
+  facet_wrap(~ offense, nrow =4.5 )
+```
+By subdividing the categories of crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
+
+### Geospatial Visulization of Crime from 2017-2021
+
+We have already looked at the temporal distribution of crimes but crimes can vary considerably with respect to geographies. Typically, within an area there will be pockets or zones which observe higher criminal activity compared to the others, which are referred to as "hot-stops". Also, the number of police stations around "hot-stops" can be used for testing effective policing. In this part, we will focus more on locating spatial patterns of each crime incident in the DC area.
+
+```{r}
+#load the census tracts of DC 
+unzip(zipfile="data/tl_2017_11_tract.zip",
+      exdir = "data")
+#read shapefile into sf
+dc<-st_read("data/tl_2017_11_tract.shp")%>%
+  select(GEOID, geometry)%>%
+  clean_names()%>%
+  st_transform(crs=4326)
+crimes_sf<-st_as_sf(crimes_clean, coords = c("longitude", "latitude"),crs=4326)
+```
+#The distribution of "theft" incidence in District of Clombia 2017-2021
+```{r}
+#count the property-related "theft" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Theft F/Auto")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the property-related "theft" crimes
+count1<-dc_merged_agg%>%
+ 
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+
+count1
+```
+
+```{r}
+#count the property-related "theft" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Theft/Other")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the count of property-related "theft" crimes
+count2<-dc_merged_agg%>%
+ 
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+
+count2
+```
+
+#The distribution of "Robbery" incidence in District of Clombia 2017-2021
+```{r}
+#count the property-related "Robbery" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Robbery")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the count of property-related "Robbery" 
+count3<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+count3
+```
+
+#The distribution of "Burglary" incidence in District of Clombia 2017-2021
+```{r}
+#count the property-related "Burglary" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Burglary")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+
+#create choropleth of the count of property-related "Burglary" 
+count4<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+
+count4
+```
+
+#Combining the Mapping of different types of "property crime incidence"
+
+According to the definition of "property crime", we use "filter" to select four different types of property crime: theft F/Auto, Theft/Other, Robbery and Burglary, with five years'(2017-2021) data.
+```{r}
+library(ggpubr)
+p=ggarrange(count1,count2,count3,count4,labels=c("Theft F/Auto 2017-2021","Theft/Other 2017-2021","Robbery 2017-2021","Burglary 2017-2021",ncol=4,
+                                   common.legend=TRUE,legend="none"),hjust = -1,vjust =1.1,font.label =list(size = 9)) 
+p
+```
+
+From the spatial patterns, we can see the geographic distribution of each crime incidence. The gradation of color represents the number of crime incidence that took place in a particular area. It is evident that theft(theft F/Auto & theft/Other) happened with higher frequency, which usually take place in the center of DC area. In comparison, there is only a small number of robbery and burglary in the past five years. However, the eastern part of Washington D.C. has a higher level of robbery incidence, and the geographic distribution (hot-stop) of burglary is more dispersive than other types of property crimes.
+
+
+#The Spatial geographic distribution of Police Stations in District of Columbia 
+```{r}
+#Identify the Spatial geographic distribution of Police Stations/Universities and Colleges/Metro Lines in District of Columbia
+
+#load the Universities and Colleges of DC 
+Universities<-st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/Universities_and_Colleges.shp") 
+
+#load the metro lines of DC 
+Metro_lines<-st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/2-Metro_Lines/Metro_Lines.shp")
+  
+#load the police stations of DC 
+police_stations<- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/Police_Stations/Police_Stations.shp")
+
+##load the DC_tracts
+DC_tracks <- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/tl_2017_11_tract/tl_2017_11_tract.shp")
+
+```
+
+```{r}
+#count the number of crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+
+count<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  geom_sf(data =police_stations,color="red")+
+  geom_sf(data =Universities,color="orange")+
+  geom_sf(data =Metro_lines,color="white")+theme_void()
+
+count
+```
+
+The red points on the plot are the police stations. The plot of mapping indicates that most of the police stations are located in and around high-crime (hot-stops) areas, especially those which are located in the middle of the city. 
+
+The orange points on the plot are universities and colleges. The plot of mapping indicates that universities located in the north part of DC is much safer than those situated in the middle, since the number of crime incidence are smaller, less than 2000  Cumulative cases in the past five years in total.
+
+The white Metro bus lines go across the most dangerous areas in the center area and outstretch to all directions where crime incidence are less.
+ 
+
