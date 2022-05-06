@@ -73,6 +73,10 @@ crimes_clean%>%
   arrange(desc(count))
 ```
 
+### Geospatial Visulization of Crime from 2017-2021
+
+We have already looked at the temporal distribution of crimes but crimes can vary considerably with respect to geographies. Typically, within an area there will be pockets or zones which observe higher criminal activity compared to the others, which are referred to as "hot-stops". Also, the number of police stations around "hot-stops" can be used testing effective policing. In this part, we will focus more on locating spatial patterns of each crime incident in the DC area.
+
 ```{r}
 #load the census tracts of DC 
 unzip(zipfile="data/tl_2017_11_tract.zip",
@@ -164,6 +168,7 @@ p=ggarrange(count1,count2,count3,count4,labels=c("Theft F/Auto 2017-2021","Theft
                                    common.legend=TRUE,legend="none"),hjust = -1,vjust =1.1,font.label =list(size = 9)) 
 p
 ```
+From the spatial patterns, we can see the geographic distribution of each crime incidence. The gradation of color represents the number of crime incidence that took place in a particular area. It is evident that theft(theft F/Auto & theft/Other) happened with higher frequency, which usually take place in the center of DC area. In comparison, there is only a small number of robbery and burglary in the past five years. However, the eastern part of Washington D.C. has a higher level of robbery incidence, and the geographic distribution (hot-stop) of burglary is more dispersive than other types of property crimes.
 
 #The Spatial geographic distribution of Police Stations in District of Columbia 
 ```{r}
@@ -189,5 +194,6 @@ count<-dc_merged_agg%>%
 
 count
 ```
+The red points on the plot are the police stations. The plot of mapping indicates that quite most of the police stations are located in and around high-crime (hot-stops) areas, especially those which are located in the middle of the city. 
 
 
