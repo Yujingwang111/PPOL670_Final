@@ -1,71 +1,80 @@
 ---
-title: "Visualization and Mapping"
-author: "Peace Corp"
+title: "Predicative Crime of D.C."
+author: "Selina Sun"
 date: "5/4/2022"
 output: html_document
 ---
-**Problem definition**
-The lockdown and quarantine measures issued worldwide in response to the COVID-19 global pandemic have brought a series of impacts on daily life. Unfortunately, most of the effects of COVID-19 and the resulting lockdown have been shockingly negative - rising deaths, unemployment and the imminent global financial crisis are the most frequently reported problems around the world. 
-
-While COVID-19 has brought about many negative effects, it has also brought about some positive changes. For example, crime rates have decreased. From 1.10% (3.1 million) in 2019 to 0.93% (2.6 million) in 2020, the percentage of people aged 12 and older who are victims of violent crime has decreased by 15%. In addition, property crime declines from 7.37% (9.8 million) of households in 2016 to 6.19% (7.9 million) of households in 2020 (Morgan & Thompson, 2022).
-Therefore, as international students, we are interested in examining the changes in crime rates before and after the COVID-19 in the District of Columbia where we study and live. 
-
-However, studies have shown that the decline in crime rate does not mean that all crimes have decreased. Because there are obvious differences between the different types of crime in the relationship between epidemiology and crime, it is important to study the types of crimes classified in the study of the relationship between COVID-19 and crime rate. It is almost always undesirable to study crime as an undifferentiated whole (Cornish & Smith,2012).
-Moreover, several armed robberies occurred in the Georgetown neighborhood from February to April 2022. Therefore, we wanted to primarily examine property crime rates in the District of Columbia. Here, we divide the years 2017-2022 into three periods: before the epidemic (2017-2019), during the  epidemic (2020-2021), and after the  epidemic (2022-). We will use the crime data in Open Data DC to examine the changes in property crime rates in DC before and during the epidemic. Meanwhile, based on the existing data, we will build models to predict property  crime rates in DC after the epidemic.
-
-**Data extraction**
-For this project, we use crime data for the city of Washington DC, which are available from 2017 onwards on the city’s open data portal. Crime data for city of Washington DC available from their open data portal at here (https://opendata.dc.gov). To make analysis manageable, we utilized the data from 2017-2021. We downloaded the DC crime data for 5 years,  put them into a folder called “data”.
-
-Because we focus on property crime, after reading the data, we cleaned up the data. We split the time, month and year of the crime according to the original data. It not only lays the foundation for the following visualization, but also facilitates our prediction models.
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-```
-```{r}
+knitr::opts_chunk$set(echo = TRUE)
+#data wrangling and pre-processing
 library(tidyverse)
 library(plyr)
 library(dplyr)
 library(readr)
 library(purrr)
-library(httr)
-library(viridis)
 library(lubridate)
 library(hms)
 library(janitor)
+#mapping 
 library(sf)
-library(tidycensus)
+library(viridis)
+library(tigris)
+library(ggspatial)
 library(patchwork)
-library(ggplot2)
-#read and load DC crimes data
+#getting census tract data
+library(tidycensus)
+library(httr)
+library(dotenv)
+#machine
+library(recipes)
+library(tidymodels)
+library(glmnet)
+library(caret)
+library(vip)
+library(parsnip)
+library(randomForest)
+library(ranger)
+library(rpart)
+#time series analysis 
+library(plotly)
+library(TSstudio)
+library(forecast)
+library(MLmetrics)
+#read and load DC crimes data from 2017-2021
 crimes <-
   list.files(path = "data/",
              pattern = "*.csv", 
              full.names = T) %>% 
-  map_df(~read_csv(., col_types = cols("CCN"= col_double()))) 
+  map_df(~read_csv(., col_types = cols("CCN"= col_double(),
+                                       "LONGITUDE" = col_character(),
+                                       "LATITUDE" = col_character()))) 
 ```
 
-
-```{r}
+#1.Crime data:data wrangling and pre-processing
+```{r dc_crime}
 #change case of the variables
 change_case<-function(x){
   return(gsub("\\b([A-Z])([A-Z]+)", "\\U\\1\\L\\2", x, perl=TRUE))
 }
 #change case and split date variable to weekdays, month and year, label property offense 
-crimes<-as.tibble(crimes)%>%
+crimes<-crimes%>%
   clean_names()%>%
   dplyr::mutate(shift=change_case(shift),
                 method=change_case(method),
                 offense=change_case(offense),
                 block=change_case(block),
                 bid=change_case(bid),
-                weekday=lubridate::wday((start_date), label=TRUE),
-                month=lubridate::month((start_date),label=TRUE),
-                year=lubridate::year(start_date),
-                occur_date=date(start_date),
-                occur_time=hms::as_hms(ymd_hms(start_date)),
-                hour=lubridate::hour(occur_time),
-                crimetype=ifelse(offense%in%c("robbery","theft","burglary"), "property", "non-property"))
-crimes_clean<-filter(distinct(crimes, ccn, .keep_all = TRUE))
+                weekday=lubridate::wday((report_dat), label=TRUE),
+                month=lubridate::month((report_dat),label=TRUE),
+                year=lubridate::year(report_dat),
+                day=lubridate::day(report_dat),
+                rep_date=date(report_dat),
+                rep_time=hms::as_hms(ymd_hms(report_dat)),
+                hours=lubridate::hour(rep_time),
+                autotheft=ifelse(offense=="Theft F/Auto", 1, 0))%>%
+  mutate(autotheft=as.factor(autotheft))%>%
+  as_tibble()
 
 #identify duplication incidents by CCN
 crimes%>%
@@ -79,259 +88,295 @@ crimes_clean%>%
   group_by(ccn)%>%
   dplyr::mutate(count=n())%>%
   filter(count>1)
+#overview of crime data
 crimes_clean%>%
   group_by(offense)%>%
   dplyr::summarize(count=n())%>%
   arrange(desc(count))
-```
-
-### Visulizing Crime and Property Crime in 2017-2021
-Visualizing data is a powerful way to gain high-level insight about underlying patterns in the data. Visualization provides useful clues about where we need to investigate further.
-
-#Crime over time from 2017-2021
-
-```{r}
-crimes_clean%>%
-  group_by(offense, year)%>%
-  dplyr::summarise(count = n())%>%
-ggplot(aes(x = year, y = count)) +
-  geom_line(color = "#F2CA27", size = 0.1) +
-  geom_smooth(color = "#1A1A1A") 
-```
-Firstly, we make a visual analysis of the number of crimes from 2017-2022 committed by DC. According to the figure, we can find that over the past five years, there has been an overall downward trend in the number of crimes committed. In addition, compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
-
-#Property crimes occur more frequently compared to other crimes
-
-```{r}
+#calculate frequency by offense 
 crimes_clean%>%
   group_by(offense)%>%
-  dplyr::summarize(count=n())%>%
-  arrange(desc(count))
-crimes_clean %>% 
-  group_by(offense) %>%
-  dplyr::summarise(count=n())%>%
-  ggplot(aes(x = reorder(offense,count), y=count, fill=offense))+
-  geom_bar(stat="identity", width = 0.5, show.legend = FALSE)+
-  geom_text(aes(label=count), vjust=2.5, size=3, colour = "black")+
-  scale_fill_viridis(option = "D", discrete = T, direction = 1, begin = 0.9, end = 0.3) +
-  theme_bw()+
-  labs(x ="Offense", y = "Number of crimes", title = "Crimes in Washington D.C.") + 
-  scale_y_continuous() +
-  coord_flip()
+  dplyr::summarise(count=sum(ccn, na.rm = TRUE))%>%
+  mutate(freq=100*count/sum(count,na.rm = TRUE))%>%
+  arrange(desc(freq))%>%
+  ungroup()
+
+#sf theft to join
+crimes_sf <- st_as_sf(
+  crimes_clean, 
+  coords = c("longitude", "latitude"), 
+  crs = 4326
+)
 ```
-Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. Theft F/Auto is one of the most common types of theft is the theft of valuables from cars.
-
-#Property crimes have mostly occurred in October of each year for the last five years
-
+In the table below, we observe that THEFT comprises about 70% of total crimes in the historical dataset. It represents over ??? observations from 2017 to 2021. This is a sufficiently rich dataset for predictive analysis.
+#City limits
 ```{r}
-crimes_clean%>%
-  group_by(offense, month)%>%
-  drop_na(hour,weekday) %>%
-  dplyr::summarise(count = n())%>%
-  ggplot(aes(x=month, y=count, color=offense))+
-  geom_line(aes(group=offense))+
-  geom_point()+
-  labs(x = "Month of Crime", y = "Number of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") 
-```
-Next, we would like to continue our analysis in the time dimension. With this line graph of the number of crimes and the time line, we can see that the high incidence of both property crimes and other crimes occurs around October every year.
-
-#Crime Over Time
-
-```{r}
-crimes_clean %>%
-  group_by(hour,weekday) %>%
-  drop_na(hour,weekday) %>%
-  dplyr::summarise(count = n()) %>%
-  ggplot(aes(x =as.factor(hour), y = weekday, fill = count, stat = "identity"))+
-  geom_tile()+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.6), legend.title = element_blank(), legend.position="top", legend.direction="horizontal", legend.key.width=unit(2, "cm"), legend.key.height=unit(0.25, "cm"), legend.margin=unit(-0.5,"cm"), panel.margin=element_blank())+
-   labs(x = "Hour of Crime", y = "Day of Week of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") +
-  scale_fill_viridis(option = "D")
-```
-In order to further analyze the time, we use the heat map to subdivide the crime time into 24 hours. By doing this, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
-
-#Certain Types of Property Crime May Be More Time Dependent
-
-```{r}
-crimes_clean <- crimes_clean %>%
-  filter(offense != 'Assault W/Dangerous Weapon') %>%
-  filter(offense != 'Sex Abuse') %>%
-  filter(offense != 'Arson') %>%
-  filter(offense != 'Homicide') %>%
-  drop_na(hour,weekday)
-
-time <- crimes_clean %>% 
-  select(weekday, hour, offense) %>%
-  group_by(weekday, hour, offense)%>%
-  dplyr::summarise(count = n())
-
-ggplot(time, aes(x =as.factor(hour), y = weekday, fill = count))+
-  geom_tile()+
- theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = 4)) +
-  labs(x = "Hour of Property Crime", y = "Day of Week of Property Crime", title = "Number of Property Crime in Washington DC from 2017 – 2021, by Category and Time of Property Crime") +
-  scale_fill_viridis(option = "D") +
-  facet_wrap(~ offense, nrow = 2.5)
-```
-This graph is good but the gradients aren’t helpful because they are not normalized. We need to normalize the range on each facet. 
-
-
-#Certain types of crime may be more time dependent(normalized).
-```{r}
-crimes_clean%>%
-    filter(offense %in% crimes_clean$offense[1:157104]) %>%
-group_by(offense,weekday,hour) %>%
-    drop_na(hour,weekday) %>%
-  dplyr::summarise(count = n()) %>%
-  mutate(norm = count/sum(count))%>%
-  
-ggplot(aes(x = hour, y = weekday, fill = norm)) +
-  geom_tile() +
-  # fte_theme() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = 4)) +
-  labs(x = "Hour of Crime", y = "Day of Week of Crime", title = "Number of Crime in Washington DC from 2017 – 2021, by Category and Time") +
-  scale_fill_viridis(option = "D") +
-  facet_wrap(~ offense, nrow =4.5 )
-```
-By subdividing the categories of property crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
-
-### Geospatial Visulization of Crime from 2017-2021
-
-We have already looked at the temporal distribution of crimes but crimes can vary considerably with respect to geographies. Typically, within an area there will be pockets or zones which observe higher criminal activity compared to the others, which are referred to as "hot-stops". Also, the number of police stations around "hot-stops" can be used for testing effective policing. In this part, we will focus more on locating spatial patterns of each crime incident in the DC area.
-
-```{r}
-#load the census tracts of DC 
-unzip(zipfile="data/tl_2017_11_tract.zip",
-      exdir = "data")
+#DC limits
+#load the census tracts of dc
+#unzip(zipfile="data/Census_Tracts_in_2020.zip",
+      #exdir = "data")
 #read shapefile into sf
-dc<-st_read("data/tl_2017_11_tract.shp")%>%
-  select(GEOID, geometry)%>%
+dc_sf<-st_read("data/Census_Tracts_in_2020.shp")%>%
   clean_names()%>%
+  select(geoid, geometry,tract)%>%
   st_transform(crs=4326)
-crimes_sf<-st_as_sf(crimes_clean, coords = c("longitude", "latitude"),crs=4326)
 ```
-#The distribution of "theft" incidence in District of Clombia 2017-2021
+#Census Tracts variables poverty, pop dens and unemployment
+#### Getting Census Tracts through API
 ```{r}
-#count the property-related "theft" crimes and perform a spatial join
-dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+readRenviron("~/.Renviron")
+credential<- Sys.getenv("census_api_key")
+#find variable code and select variables
+v2020 <- load_variables(2020, "acs5", cache = TRUE)
+#population B01003_001
+#poverty B17017_001
+#unemployment B23025_001
+#household income B19013_001
+#getting variables from acs
+options(tigris_use_cache = TRUE)
+dc_acs<-as_tibble(get_acs(
+  geography = "tract",
+  survey="acs5",
+  variables = c("B01003_001","B17017_001","B17017_002", "B23025_001",
+  "B23025_005", "B19013_001","B06009_001", "B06009_002"),
+  state=11,
+  county=001,
+  geometry=TRUE,
+  year=2020,
+))
+#data wrangling and preprocessing 
+#pivot tibbles and rename variables to get demographic features of dc
+dc_demo<-dc_acs%>%
+  clean_names()%>%
+  select(geoid, variable, estimate, geometry)%>%
+  pivot_wider(
+    names_from = "variable", 
+    values_from = "estimate")%>%
+  dplyr::rename(population=B01003_001,
+                poverty_raw=B17017_001,
+                poverty_below=B17017_002,
+                employ=B23025_001,
+                unemploy=B23025_005,
+                income=B19013_001,
+                educ=B06009_001,
+                belowhigh=B06009_002)%>%
+  #handling missing data with average values
+  mutate(avg_poverty_rate=poverty_below/poverty_raw, #extract regional average poverty rate
+         avg_poverty_rate=ifelse(poverty_raw == 0, 0, poverty_below/poverty_raw),#impute missing data
+         avg_unemploy_rate=unemploy/employ,#extract regional average poverty rate
+         avg_unemploy_rate=ifelse(employ==0, avg_unemploy_rate, unemploy/employ),#impute missing data
+         income=ifelse(is.na(income) | income==0, 98654, income), #median household income for missing data
+         population=ifelse(is.na(population), 0, population),
+         below_high=belowhigh/educ, #regional below high school educ
+         below_high=ifelse(is.na(educ), 0, belowhigh/educ))#impute missing 
+```
+#join census tract data with crime data 
+```{r}
+data<-st_join(crimes_sf, dc_sf, join=st_intersects)
+data<-left_join(data, dc_demo, by="geoid")%>%
+  st_set_geometry(NULL)
+sample<-data%>%
+  select(shift, ward, psa, block_group, 
+         weekday, month,year,hours,
+         autotheft,population,income, 
+         avg_poverty_rate,avg_unemploy_rate,below_high)%>%
+  mutate(autotheft=as.factor(autotheft))
+write_csv(sample,"sample.csv")
+```
+
+#Simple decision tree model (the only one that succeed)
+```{r}
+set.seed(20220502)
+split<-initial_split(sample, prop=0.75)
+theft_train<-training(split)
+theft_test<-testing(split)
+theft_rec<-
+  recipe(autotheft ~ ., data = theft_train) %>%
+  themis::step_downsample(autotheft)%>%
+  prep(training=theft_train, retain = TRUE)
+
+sampled_mod <-
+  decision_tree() %>%
+  set_engine(engine = "rpart") %>%
+  set_mode(mode = "classification")
+sampled_wf <- workflow() %>%
+  add_recipe(theft_rec) %>%
+  add_model(sampled_mod) 
+#fit the model
+sampled_fit <- sampled_wf %>%
+  fit(data = theft_train)
+#plot a decision tree
+rpart.plot::rpart.plot(x = sampled_fit$fit$fit$fit)
+```
+```{r}
+predictions <- bind_cols(
+  theft_test,
+  predict(object = sampled_fit, new_data = theft_test),
+  predict(object = sampled_fit, new_data = theft_test, type = "prob")
+)
+select(predictions, autotheft, starts_with(".pred"))
+
+conf_mat(data = predictions,
+         truth = autotheft,
+         estimate = .pred_class)
+yardstick::accuracy(data = predictions,
+         truth = autotheft,
+         estimate = .pred_class)
+yardstick::recall(data = predictions,
+       truth = autotheft,
+       estimate = .pred_class)
+sampled_fit%>%
+  extract_fit_parsnip() %>%
+  vip(num_features = 10)
+```
+#Reflection and Improvement
+
+===================================================
+Failed logistic classification model - binominal 
+lr_recipe <- 
+  recipe(autotheft ~ ., data = theft_train) %>% 
+  step_other(ward, block_group, psa)%>%
+  step_r(month, weekday)%>%
+  step_dummy(year,hour,ward) %>% 
+  step_zv(all_predictors()) %>% 
+  step_normalize(all_predictors())
+bake(prep(lr_recipe, training = theft_train), new_data = theft_train)
+folds <- vfold_cv(data = theft_train, v = 10, repeats = 1)
+```
+
+Failed model for decision tree with tuning 
+dt_mod<-
+  decision_tree(cost_complexity = tune(),
+                tree_depth=tune(),
+                min_n=tune())%>%
+  set_engine(engine = "rpart")%>%
+  set_mode(mode="classification")
+dt_wf<-workflow()%>%
+  add_recipe(theft_rec)%>%
+  add_model(dt_mod)
+dt_grid <- grid_regular(cost_complexity(),
+                          tree_depth(),
+                          min_n(), 
+                          levels = 3)
+set.seed(20220502)
+dt_tuning<-dt_wf %>%
+  tune_grid(resamples=folds,
+            grid=dt_grid)
+#plot the rmse for decision tree
+collect_metrics(dt_tuning, summarize = FALSE)%>%
+  filter(.metric == "rmse")%>%
+  ggplot(aes(id, .estimate, group= .estimator))+
+  geom_line()+
+  geom_point()+
+  scale_y_continuous(limits = c(0, 3)) +
+  labs(title = "Calculated RMSE Across the 10 Folds",
+     y = "RMSE_hat") +
+theme_minimal()
+dt_tuning%>%
+  show_best(metric="rmse")
+dt_best <- dt_tuning %>%
+  select_best(metric="rmse")
+dt_final <- finalize_workflow(
+  dt_wf,
+  parameters = dt_best
+)
+dt_final <- finalize_workflow(
+  dt_wf,
+  parameters = dt_best
+)
+dt_wf_fit<-dt_final%>%
+  fit(data=theft_train)
+dt_fit<-dt_wf_fit%>%
+  pull_workflow_fit()
+dt_coefs <- dt_final %>%
+  fit(data = theft_train) %>%
+  extract_fit_parsnip() %>%
+  vi(lambda = dt_best)
+vip(dt_fit)
+===========================================
+
+#We also tried some Time series Analysis
+For Time Series Analysis, we choose one type of crime, Auto theft based on 2017 to 2021 data.
+```{r}
+#extract day and the number of theft, set interval unit to hours
+crimes_theft<-crimes_clean%>%
+  select(offense, year, month, day, hours)%>%
+  mutate(Date=make_datetime(year, month, day, hours))%>%
+  select(offense,Date)%>%
   filter(offense=="Theft F/Auto")%>%
-  group_by(geoid)%>%
-  dplyr::summarize(count = n())
-#create choropleth of the property-related "theft" crimes
-count1<-dc_merged_agg%>%
- 
-  ggplot()+
-  geom_sf(aes(fill=count), color = "white", size = 0.1)+
-  scale_fill_viridis(option = "D")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+  group_by(Date)%>%
+  dplyr::summarise(Theft=n())%>%
+  ungroup()
+#check the begining and ending of the time frame
+head(crimes_theft,10) 
+tail(crime_theft, 20)
+```
 
-count1
+#Cross Validation
+Time series object will be based on the Battery column and the frequency to be 24 as it is total hour of reported crime for 1 day.
+```{r}
+#creat object
+theft_ts <- ts(crimes_theft$Theft, frequency = 24)
+#plot the number of theft according to date
+theft_plot <-crimes_theft %>%
+ggplot(aes(x = Date, y = Theft)) +
+geom_line(aes(color = "Theft")) +
+scale_x_datetime(name = "Date", date_breaks = "5 year") +
+scale_y_continuous(breaks = seq(0, 400, 100)) + 
+theme_minimal() +
+labs(title = "DC Theft Crime", subtitle = "2017 - 2021")
+ggplotly(theft_plot)
 ```
 
 ```{r}
-#count the property-related "theft" crimes and perform a spatial join
-dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
-  filter(offense=="Theft/Other")%>%
-  group_by(geoid)%>%
-  dplyr::summarize(count = n())
-#create choropleth of the count of property-related "theft" crimes
-count2<-dc_merged_agg%>%
- 
-  ggplot()+
-  geom_sf(aes(fill=count), color = "white", size = 0.1)+
-  scale_fill_viridis(option = "D")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
-
-count2
+#decompose time series object 
+#try to see the trend and seasonality 
+theft_ts_dec <- theft_ts %>%
+  tail(365) %>%
+  decompose()
+theft_ts_dec %>%
+  autoplot()
 ```
-
-#The distribution of "Robbery" incidence in District of Clombia 2017-2021
-```{r}
-#count the property-related "Robbery" crimes and perform a spatial join
-dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
-  filter(offense=="Robbery")%>%
-  group_by(geoid)%>%
-  dplyr::summarize(count = n())
-#create choropleth of the count of property-related "Robbery" 
-count3<-dc_merged_agg%>%
-  ggplot()+
-  geom_sf(aes(fill=count), color = "white", size = 0.1)+
-  scale_fill_viridis(option = "D")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
-count3
-```
-
-#The distribution of "Burglary" incidence in District of Clombia 2017-2021
-```{r}
-#count the property-related "Burglary" crimes and perform a spatial join
-dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
-  filter(offense=="Burglary")%>%
-  group_by(geoid)%>%
-  dplyr::summarize(count = n())
-
-#create choropleth of the count of property-related "Burglary" 
-count4<-dc_merged_agg%>%
-  ggplot()+
-  geom_sf(aes(fill=count), color = "white", size = 0.1)+
-  scale_fill_viridis(option = "D")+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
-
-count4
-```
-
-#Combining the Mapping of different types of "property crime incidence"
-
-According to the definition of "property crime", we use "filter" to select four different types of property crime: theft F/Auto, Theft/Other, Robbery and Burglary, with five years'(2017-2021) data.
-```{r}
-library(ggpubr)
-p=ggarrange(count1,count2,count3,count4,labels=c("Theft F/Auto 2017-2021","Theft/Other 2017-2021","Robbery 2017-2021","Burglary 2017-2021",ncol=4,
-                                   common.legend=TRUE,legend="none"),hjust = -1,vjust =1.1,font.label =list(size = 9)) 
-p
-```
-
-From the spatial patterns, we can see the geographic distribution of each crime incidence. The gradation of color represents the number of crime incidence that took place in a particular area. It is evident that theft(theft F/Auto & theft/Other) happened with higher frequency, which usually take place in the center of DC area. In comparison, there is only a small number of robbery and burglary in the past five years. However, the eastern part of Washington D.C. has a higher level of robbery incidence, and the geographic distribution (hot-stop) of burglary is more dispersive than other types of property crimes.
-
-
-#The Spatial geographic distribution of Police Stations in District of Columbia 
-```{r}
-#Identify the Spatial geographic distribution of Police Stations/Universities and Colleges/Metro Lines in District of Columbia
-
-#load the Universities and Colleges of DC 
-Universities<-st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/Universities_and_Colleges.shp") 
-
-#load the metro lines of DC 
-Metro_lines<-st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/2-Metro_Lines/Metro_Lines.shp")
-  
-#load the police stations of DC 
-police_stations<- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/Police_Stations/Police_Stations.shp")
-
-##load the DC_tracts
-DC_tracks <- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/tl_2017_11_tract/tl_2017_11_tract.shp")
-
-```
+The trend shows some pattern like seasonal, indicating there are other seasonality pattern that have not been caught by the plot. We will create a Multi Seasonal Time Series Object.
 
 ```{r}
-#count the number of crimes and perform a spatial join
-dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
-  group_by(geoid)%>%
-  dplyr::summarize(count = n())
+# Create MSTS Object
+theft_multi <- msts(crimes_theft$Theft, seasonal.periods = c(24, # Daily
+                                                            24*7, # Weekly
+                                                            24*30)) # Monthly
+# Decompose MSTS Object
+theft_multi_dec <- theft_multi %>%
+  mstl()
 
-count<-dc_merged_agg%>%
-  ggplot()+
-  geom_sf(aes(fill=count), color = "white", size = 0.1)+
-  scale_fill_viridis(option = "D")+
-  geom_sf(data =police_stations,color="red")+
-  geom_sf(data =Universities,color="orange")+
-  geom_sf(data =Metro_lines,color="white")+
-ggtitle("The geographical distribution of crimes \n around particular spots in DC ") +theme_void()
-
-count
+theft_multi_dec %>%
+  tail(365) %>%
+  autoplot()
 ```
+From the plot above, we can see the trend of the theft Crime is already going smooth. The theft Crime trend itself is decreasing in the last 365 days.
 
-The red points on the plot are the police stations. The plot of mapping indicates that most of the police stations are located in and around high-crime (hot-stops) areas, especially those which are located in the middle of the city. 
-
-The orange points on the plot are universities and colleges. The plot of mapping indicates that universities located in the north part of DC is much safer than those situated in the middle, since the number of crime incidence are smaller, less than 2000  Cumulative cases in the past five years in total.
-
-The white Metro bus lines go across the most dangerous areas in the center area and outstretch to all directions where crime incidence are less.
- 
-
-### Modeling
+#Seasonality Analysis 
+##Daily Seasonality
+These are the plot of Daily Seasonality of Battery Crime in Chicago
+```{r}
+# Create a data frame based on MSTS Object
+theft_multi_df <- as.data.frame(theft_multi_dec)
+p1 <- theft_multi_df %>%
+  mutate(day = crimes_theft$Date) %>%
+  group_by(day) %>%
+  summarise(seasonal = sum(Seasonal24 + Seasonal168 + Seasonal720)) %>%
+  head(24*2) %>%
+  ggplot(aes(x = day, y = seasonal)) +
+  geom_point(col = "red") + geom_line(col = "black") +
+  theme_minimal()
+p2 <- theft_multi_df %>%
+  mutate(day = crimes_theft$Date, 
+         month = month(crimes_theft$Date, label = T)) %>%
+  group_by(month) %>%
+  summarise(seasonal = sum(Seasonal24 + Seasonal168 + Seasonal720)) %>%
+  head(24*30) %>%
+  ggplot(aes(x = month, y = seasonal)) +
+  geom_point() + geom_col() +
+  theme_minimal()
+p1/p2
+```
+As we can see from the plot above, The crime tend to increase in the month of Feb, May, July, and Nov. These can be seen as a warning signal to people around the city that the chance of them getting harmed is high around these time. .
