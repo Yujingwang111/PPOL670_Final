@@ -1,5 +1,5 @@
 ---
-title: "Mapping"
+title: "Vis & Mapping"
 author: "Peace Corp"
 date: "5/4/2022"
 output: html_document
@@ -100,7 +100,7 @@ ggplot(aes(x = year, y = count)) +
 ```
 Firstly, we make a visual analysis of the number of crimes from 2017-2022 committed by DC. According to the figure, we can find that over the past five years, there has been an overall downward trend in the number of crimes committed. In addition, compared with 2019, the number of crimes in 2020 has decreased significantly, which has a certain relationship with the COVID-19.
 
-#Property crimes occur more frequently compared to other crimes.
+#Property crimes occur more frequently compared to other crimes
 
 ```{r}
 crimes_clean%>%
@@ -121,7 +121,7 @@ crimes_clean %>%
 ```
 Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. 
 
-#Property crimes have mostly occurred in October of each year for the last five years.
+#Property crimes have mostly occurred in October of each year for the last five years
 
 ```{r}
 crimes_clean%>%
@@ -135,7 +135,7 @@ crimes_clean%>%
 ```
 Next, we would like to continue our analysis in the time dimension. With this line graph of the number of crimes and the time line, we can see that the high incidence of both property crimes and other crimes occurs around October every year.
 
-#Property Crime Over Time
+#Crime Over Time
 
 ```{r}
 crimes_clean %>%
@@ -145,10 +145,10 @@ crimes_clean %>%
   ggplot(aes(x =as.factor(hour), y = weekday, fill = count, stat = "identity"))+
   geom_tile()+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.6), legend.title = element_blank(), legend.position="top", legend.direction="horizontal", legend.key.width=unit(2, "cm"), legend.key.height=unit(0.25, "cm"), legend.margin=unit(-0.5,"cm"), panel.margin=element_blank())+
-   labs(x = "Hour of Property Crime", y = "Day of Week of Property Crime", title = "Number of Property Crime in DC from 2017 – 2021, by Time of Property Crime") +
+   labs(x = "Hour of Crime", y = "Day of Week of Crime", title = "Number of Crime in DC from 2017 – 2021, by Time of Crime") +
   scale_fill_gradient(low = "white", high = "dark blue")
 ```
-In order to further analyze the time, we use the heat map to subdivide the crime time into 24 hours. By doing this, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of property crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
+In order to further analyze the time, we use the heat map to subdivide the crime time into 24 hours. By doing this, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
 
 #Certain Types of Crime May Be More Time Dependent
 
@@ -166,6 +166,8 @@ ggplot( aes(x = as.factor(hour), y = weekday, fill = count,stat = "identity")) +
   scale_fill_gradient(low = "white", high = "#2980B9") +
   facet_wrap(~ offense, nrow = 2.5)
 ```
+This graph is good but the gradients aren’t helpful because they are not normalized. We need to normalize the range on each facet. 
+
 #Certain types of crime may be more time dependent(normalized).
 ```{r}
 crimes_clean%>%
