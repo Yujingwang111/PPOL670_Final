@@ -6,7 +6,7 @@ Group member: Jiawei Sun, Rongrong Sun, Yiwen Wang, Yujing Wang
 
 ## Description
 See the [project website]() for the full analysis. 
-Combined with the data sources, we analyzed the crime data in Washington D.C. from 2017 to 2021, and predicted the crime data in 2022. We use "ggplot2" to visualize the types of crime and the relationship between crime and time, and made a geospatial analysis of the crimes in the past five years. Then, we generated two machine learning models, time series and decision tree to predict crime. Besides, we also tried other models, although we failed, we still kept model records and codes.
+Combined with the data sources, we analyzed the crime data in Washington D.C. from 2017 to 2021, and predicted the crime data in 2022. We use ‘ggplot2’ to visualize the types of crime and the relationship between crime and time, and made a geospatial analysis of the crimes in the past five years. Then, we generated two machine learning models, time series and decision tree to predict crime. Besides, we also tried other models, although we failed, we still kept model records and codes.
 
 ## Data Source
 * For this analysis, we combined multiple sources provided by the government of Washington, D.C. The [opendata.dc](https://opendata.dc.gov/search?collection=Dataset&q=crime%20incidents) is the main data source we used. This data website contains the summary of annual DC crime data. We extracted the crime data from 2017 to 2021 and made visual analysis.
