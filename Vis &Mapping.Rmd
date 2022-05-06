@@ -181,11 +181,11 @@ ggplot(aes(x = hour, y = weekday, fill = norm)) +
   geom_tile() +
   # fte_theme() +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.6, size = 4)) +
-  labs(x = "Hour of Property Crime", y = "Day of Week of Property Crime", title = "Number of Property Crime in Washington DC from 2017 – 2021, by Category and Time of Property Crime") +
+  labs(x = "Hour of Crime", y = "Day of Week of Crime", title = "Number of Crime in Washington DC from 2017 – 2021, by Category and Time") +
   scale_fill_gradient(low = "white", high = "#2980B9") +
   facet_wrap(~ offense, nrow =2.5 )
 ```
-By subdividing the categories of property crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
+By subdividing the categories of crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
 
 ### Geospatial Visulization of Crime from 2017-2021
 
