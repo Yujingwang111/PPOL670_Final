@@ -10,7 +10,7 @@ Combined with the data sources, we analyzed the crime data in Washington D.C. fr
 
 ## Data Source
 * For this analysis, I combined multiple sources provided by the government of Washington, D.C. The [opendata.dc](https://opendata.dc.gov/search?collection=Dataset&q=crime%20incidents)This data website contains the summary of annual DC crime data. We extracted the crime data from 2017 to 2021 and made visual analysis.
-* In order to better combine the crime with DC in geographical space, we find the [topographic map of DC](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-state-district-of-columbia-current-census-tract-state-based), the [metro line distribution map of DC](https://opendata.dc.gov/datasets/DCGIS::metro-lines/about), the [University distribution map of DC](https://opendata.dc.gov/datasets/DCGIS::universities-and-colleges/explore?location=38.891128%2C-77.020974%2C11.86] and [police station in DC](https://opendata.dc.gov/datasets/police-stations/explore?location=38.890899%2C-77.026467%2C12.54) respectively.
+* In order to better combine the crime with DC in geographical space, we find the [topographic map of DC](https://catalog.data.gov/dataset/tiger-line-shapefile-2017-state-district-of-columbia-current-census-tract-state-based), the [metro line distribution map of DC](https://opendata.dc.gov/datasets/DCGIS::metro-lines/about), the [University distribution map of DC](https://opendata.dc.gov/datasets/DCGIS::universities-and-colleges/explore?location=38.891128%2C-77.020974%2C11.86) and [police station in DC](https://opendata.dc.gov/datasets/police-stations/explore?location=38.890899%2C-77.026467%2C12.54) respectively.
 
 
 ## Authors
