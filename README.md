@@ -19,5 +19,5 @@ Contributors names and contact info
 
 * Jiawei Sun js4880@georgetown.edu
 * Rongrong Sun rs2157@georgetown.edu
-* Yiwen Wang   w826@georgetown.edu
+* Yiwen Wang   yw826@georgetown.edu
 * Yujing Wang yw790@georgetown.edu
