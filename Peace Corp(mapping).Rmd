@@ -103,6 +103,7 @@ count1<-dc_merged_agg%>%
 count1
 ```
 
+#The distribution of "Burglary" incidence in the District of Clombia 2017-2021
 ```{r}
 #count the property-related "theft" crimes and perform a spatial join
 dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
@@ -174,8 +175,8 @@ DC_tracks <- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/d
 
 ```
 
+#Count the number of crimes and perform a spatial join
 ```{r}
-#count the number of crimes and perform a spatial join
 dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
   group_by(geoid)%>%
   dplyr::summarize(count = n())
