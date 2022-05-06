@@ -156,7 +156,7 @@ count4<-dc_merged_agg%>%
 count4
 ```
 
-#Combining the pictures using "patchwork"
+#Combining the mapping output
 
 ```{r}
 library(ggpubr)
