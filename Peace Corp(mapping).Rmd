@@ -194,6 +194,6 @@ count<-dc_merged_agg%>%
 
 count
 ```
-The red points on the plot are the police stations. The plot of mapping indicates that quite most of the police stations are located in and around high-crime (hot-stops) areas, especially those which are located in the middle of the city. 
+The red points on the plot are the police stations. The plot of mapping indicates that most of the police stations are located in and around high-crime (hot-stops) areas, especially those which are located in the middle of the city. 
 
 
