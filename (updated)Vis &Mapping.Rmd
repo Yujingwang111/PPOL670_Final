@@ -119,7 +119,7 @@ crimes_clean %>%
   scale_y_continuous() +
   coord_flip()
 ```
-Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. 
+Secondly, we want to further study and observe that the number of property crimes in the types of crimes is the largest, of which the largest is theft / other, with a total of 66111 cases, the second most is theft / auto, the third most is motor vehicle theft and the fourth most is robbiery. Theft F/Auto is one of the most common types of theft is the theft of valuables from cars.
 
 #Property crimes have mostly occurred in October of each year for the last five years
 
