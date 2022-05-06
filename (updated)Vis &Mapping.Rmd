@@ -334,3 +334,4 @@ The orange points on the plot are universities and colleges. The plot of mapping
 The white Metro bus lines go across the most dangerous areas in the center area and outstretch to all directions where crime incidence are less.
  
 
+### Modeling
