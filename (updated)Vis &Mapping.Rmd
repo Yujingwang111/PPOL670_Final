@@ -321,7 +321,8 @@ count<-dc_merged_agg%>%
   scale_fill_viridis(option = "D")+
   geom_sf(data =police_stations,color="red")+
   geom_sf(data =Universities,color="orange")+
-  geom_sf(data =Metro_lines,color="white")+theme_void()
+  geom_sf(data =Metro_lines,color="white")+
+ggtitle("The geographical distribution of crimes \n around particular spots in DC ") +theme_void()
 
 count
 ```
