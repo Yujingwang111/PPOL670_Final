@@ -85,7 +85,7 @@ dc<-st_read("data/tl_2017_11_tract.shp")%>%
 crimes_sf<-st_as_sf(crimes_clean, coords = c("longitude", "latitude"),crs=4326)
 ```
 
-#The distribution of "theft" incidence in District of Clombia 2017-2021
+#The distribution of "Theft F/Auto" incidence in District of Clombia 2017-2021
 ```{r}
 #count the property-related "theft" crimes and perform a spatial join
 dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
@@ -103,7 +103,7 @@ count1<-dc_merged_agg%>%
 count1
 ```
 
-#The distribution of "Burglary" incidence in the District of Clombia 2017-2021
+#The distribution of "Theft/Other" incidence in the District of Clombia 2017-2021
 ```{r}
 #count the property-related "theft" crimes and perform a spatial join
 dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
