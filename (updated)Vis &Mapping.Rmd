@@ -14,7 +14,7 @@ However, studies have shown that the decline in crime rate does not mean that al
 Moreover, several armed robberies occurred in the Georgetown neighborhood from February to April 2022. Therefore, we wanted to primarily examine property crime rates in the District of Columbia. Here, we divide the years 2017-2022 into three periods: before the epidemic (2017-2019), during the  epidemic (2020-2021), and after the  epidemic (2022-). We will use the crime data in Open Data DC to examine the changes in property crime rates in DC before and during the epidemic. Meanwhile, based on the existing data, we will build models to predict property  crime rates in DC after the epidemic.
 
 **Data extraction**
-For this project, we use crime data for the city of Washington DC, which are available from 2017 onwards on the city’s open data portal. Crime data for city of Washington DC available from their open data portal at: https://opendata.dc.gov. To make analysis manageable, we utilized the data from 2017-2021. We downloaded the DC crime data for 5 years,  put them into a folder called “data”.
+For this project, we use crime data for the city of Washington DC, which are available from 2017 onwards on the city’s open data portal. Crime data for city of Washington DC available from their open data portal at here (https://opendata.dc.gov). To make analysis manageable, we utilized the data from 2017-2021. We downloaded the DC crime data for 5 years,  put them into a folder called “data”.
 
 Because we focus on property crime, after reading the data, we cleaned up the data. We split the time, month and year of the crime according to the original data. It not only lays the foundation for the following visualization, but also facilitates our prediction models.
 
@@ -150,7 +150,7 @@ crimes_clean %>%
 ```
 In order to further analyze the time, we use the heat map to subdivide the crime time into 24 hours. By doing this, we can more accurately see that 19-23 o'clock on Friday is the high incidence period of crime. In addition, 22 o'clock on Tuesday is also the high incidence period of crime.
 
-#Certain Types of Crime May Be More Time Dependent
+#Certain Types of Property Crime May Be More Time Dependent
 
 ```{r}
 crimes_clean <- crimes_clean %>%
@@ -192,7 +192,7 @@ ggplot(aes(x = hour, y = weekday, fill = norm)) +
   scale_fill_viridis(option = "D") +
   facet_wrap(~ offense, nrow =4.5 )
 ```
-By subdividing the categories of crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
+By subdividing the categories of property crimes, we find that theft is the most frequent way of crime, and its high incidence period is 19:00 to 23:00 from Monday to Friday.
 
 ### Geospatial Visulization of Crime from 2017-2021
 
