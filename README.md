@@ -4,8 +4,7 @@
 
 Group member: Jiawei Sun, Rongrong Sun, Yiwen Wang, Yujing Wang
 
-## Description
-See the [project website](file:///Users/wangyujing/Library/Containers/com.tencent.xinWeChat/Data/Library/Application%20Support/com.tencent.xinWeChat/2.0b4.0.9/40b76b831c2c8f72bc1c3b5e6489d76b/Message/MessageTemp/b9f99d1149092bfcea3e3b7a62303463/File/DC-crime-analysis.html) for the full analysis. 
+## Description 
 Combined with the data sources, we analyzed the crime data in Washington D.C. from 2017 to 2021, and predicted the crime data in 2022. We use `ggplot2`  to visualize the types of crime and the relationship between crime and time, and made a geospatial analysis of the crimes in the past five years. Then, we generated two machine learning models, time series and decision tree to predict crime. Besides, we also tried other models, although we failed, we still kept model records and codes.
 
 ## Data Source
