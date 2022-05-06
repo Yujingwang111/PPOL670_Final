@@ -1,0 +1,192 @@
+---
+title: "Final Project-Mapping"
+author: "Peace Corp"
+date: "5/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(plyr)
+library(dplyr)
+library(readr)
+library(purrr)
+library(httr)
+library(viridis)
+library(lubridate)
+library(hms)
+library(janitor)
+library(sf)
+library(tidycensus)
+library(patchwork)
+library(stringr)
+library(ggplot2)
+#read and load DC crimes data
+crimes <-
+  list.files(path = "data/",
+             pattern = "*.csv", 
+             full.names = T) %>% 
+  map_df(~read_csv(., col_types = cols("CCN"= col_double()))) 
+```
+
+
+```{r}
+#change case of the variables
+change_case<-function(x){
+  return(gsub("\\b([A-Z])([A-Z]+)", "\\U\\1\\L\\2", x, perl=TRUE))
+}
+#change case and split date variable to weekdays, month and year, label property offense 
+crimes<-as.tibble(crimes)%>%
+  clean_names()%>%
+  dplyr::mutate(shift=change_case(shift),
+                method=change_case(method),
+                offense=change_case(offense),
+                block=change_case(block),
+                bid=change_case(bid),
+                weekday=lubridate::wday((start_date), label=TRUE),
+                month=lubridate::month((start_date),label=TRUE),
+                year=lubridate::year(report_dat),
+                occur_date=date(start_date),
+                occur_time=hms::as_hms(ymd_hms(start_date)),
+               # time_group=lubridate::hour(occur_time) %/% 6),
+               #   cut(as.numeric(occur_time),
+               #  breaks=c(0,6*60,12*60,18*60,23*60+59),
+              #  labels=c("00-06","06-12","12-18","18-00"),include.lowest = TRUE),
+                crimetype=ifelse(offense%in%c("robbery","theft","burglary"), "property", "non-property")
+  )
+#identify duplication incidents by CCN
+crimes%>%
+  group_by(ccn)%>%
+  dplyr::mutate(count=n())%>%
+  filter(count>1)
+#remove duplicate rows 
+crimes_clean<-filter(distinct(crimes, ccn, .keep_all = TRUE))
+#check 
+crimes_clean%>%
+  group_by(ccn)%>%
+  dplyr::mutate(count=n())%>%
+  filter(count>1)
+crimes_clean%>%
+  group_by(offense)%>%
+  dplyr::summarize(count=n())%>%
+  arrange(desc(count))
+```
+
+```{r}
+#load the census tracts of DC 
+unzip(zipfile="data/tl_2017_11_tract.zip",
+      exdir = "data")
+#read shapefile into sf
+dc<-st_read("data/tl_2017_11_tract.shp")%>%
+  select(GEOID, geometry)%>%
+  clean_names()%>%
+  st_transform(crs=4326)
+crimes_sf<-st_as_sf(crimes_clean, coords = c("longitude", "latitude"),crs=4326)
+```
+
+#The distribution of "theft" incidence in District of Clombia 2017-2021
+```{r}
+#count the property-related "theft" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Theft F/Auto")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the property-related "theft" crimes
+count1<-dc_merged_agg%>%
+ 
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+
+count1
+```
+
+```{r}
+#count the property-related "theft" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Theft/Other")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the count of property-related "theft" crimes
+count2<-dc_merged_agg%>%
+ 
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+
+count2
+```
+
+
+#The distribution of "Robbery" incidence in District of Clombia 2017-2021
+```{r}
+#count the property-related "Robbery" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Robbery")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+#create choropleth of the count of property-related "Robbery" 
+count3<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+count3
+```
+
+#The distribution of "Burglary" incidence in District of Clombia 2017-2021
+```{r}
+#count the property-related "Burglary" crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  filter(offense=="Burglary")%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+
+#create choropleth of the count of property-related "Burglary" 
+count4<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.6))
+
+count4
+```
+
+#Combining the pictures using "patchwork"
+
+```{r}
+library(ggpubr)
+p=ggarrange(count1,count2,count3,count4,labels=c("Theft F/Auto 2017-2021","Theft/Other 2017-2021","Robbery 2017-2021","Burglary 2017-2021",ncol=4,
+                                   common.legend=TRUE,legend="none"),hjust = -1,vjust =1.1,font.label =list(size = 9)) 
+p
+```
+
+#The Spatial geographic distribution of Police Stations in District of Columbia 
+```{r}
+#Identify the Spatial geographic distribution of Police Stations in District of Columbia
+
+police_stations<- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/Police_Stations/Police_Stations.shp")
+
+DC_tracks <- st_read("/Users/yiwenwang/Desktop/Data\ Skills/R/Final\ Project-R/data/tl_2017_11_tract/tl_2017_11_tract.shp")
+
+```
+
+```{r}
+#count the number of crimes and perform a spatial join
+dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
+  group_by(geoid)%>%
+  dplyr::summarize(count = n())
+
+count<-dc_merged_agg%>%
+  ggplot()+
+  geom_sf(aes(fill=count), color = "white", size = 0.1)+
+  scale_fill_viridis(option = "D")+
+  geom_sf(data =police_stations,color="red")+theme_void()
+
+count
+```
+
+
