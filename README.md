@@ -21,3 +21,13 @@ Contributors names and contact info
 * Rongrong Sun rs2157@georgetown.edu
 * Yiwen Wang   yw826@georgetown.edu
 * Yujing Wang yw790@georgetown.edu
+
+## Reference
+
+Dr. Qiusheng Wu, S., 2022. Using R for Crime Analysis. [online] Wetlands.io. Available at: <https://wetlands.io/maps/Crime-Analysis-Using-R.html#enhance_data_layer> [Accessed 2 May 2022].
+
+Morgan, R. and Thompson, A., 2022. Criminal Victimization, 2020. [online] Bureau of Justice Statistics. Available at: <https://bjs.ojp.gov/library/publications/criminal-victimization-2020> [Accessed 2 May 2022].
+
+Otexts.com. 2022. Chapter 3 Time series decomposition | Forecasting: Principles and Practice (3rd ed). [online] Available at: <https://otexts.com/fpp3/decomposition.html> [Accessed 4 May 2022].
+
+Rpubs.com. 2022. RPubs - Chicago Crime: A Time Series Analysis. [online] Available at: <https://rpubs.com/Arifyunan360/Chicago_Crime> [Accessed 5 May 2022].
