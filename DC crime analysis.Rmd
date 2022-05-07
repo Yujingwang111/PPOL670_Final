@@ -304,7 +304,7 @@ count3<-dc_merged_agg%>%
 count3
 ```
 
-#The distribution of "Burglary" incidence in District of Colmnbia 2017-2021
+#The distribution of "Burglary" incidence in DC 2017-2021
 ```{r}
 #count the property-related "Burglary" crimes and perform a spatial join
 dc_merged_agg<-st_join(dc, crimes_sf, join=st_intersects)%>%
@@ -334,7 +334,7 @@ p
 
 From the spatial patterns, we can see the geographic distribution of each crime incidence. The gradation of color represents the number of crime incidence that took place in a particular area. It is evident that theft(theft F/Auto & theft/Other) happened with higher frequency, which usually take place in the center of DC area. In comparison, there is only a small number of robbery and burglary in the past five years. However, the eastern part of Washington D.C. has a higher level of robbery incidence, and the geographic distribution (hot-stop) of burglary is more dispersive than other types of property crimes.
 
-#The Spatial geographic distribution of Police Stations in District of Columbia 
+#The Spatial geographic distribution of Police Stations in DC
 ```{r}
 #Identify the Spatial geographic distribution of Police Stations/Universities and Colleges/Metro Lines in District of Columbia
 
